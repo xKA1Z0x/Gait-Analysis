@@ -17,20 +17,21 @@ from sklearn.metrics import confusion_matrix
 
 
 #Load your pd friendly dataset here
-file_path = r"C:\Users\sajja\OneDrive - UCB-O365\3rd Manuscript\JoeyMohammed.xlsx"
-data = pd.read_excel(file_path, sheet_name='nooutliernew2')
+file_path = r"yourdatasethere.xlsx"
+data = pd.read_excel(file_path, sheet_name='yourdatasheetname')
 
 # Data preprocessing
 data.replace([np.inf, -np.inf], np.nan, inplace=True)  # Replace inf/-inf with NaN
 data = data.dropna(axis=0) #Removing rows with NaN
 
-# Define the target column and columns you don't want to have as your features
-target_column = 'Condition'
-features_to_include = ['toeoutangle','toeoffangle','lumbarcoronalROM','lumbarsagittalROM','gaitspeed']
-#features_to_drop = ['Subject', 'Condition']
+# Define the target column and columns you do or don't want to have as your features
+target_column = 'your target'
+features_to_include = ['your features']
+#features_to_drop = ['your features to drop']
 # Select features (X) and the target (y)
 X = data[features_to_include]
 y = data[target_column]
+#uncomment below in case you want to drop features instead of selecting features
 #X = data.drop(columns=features_to_drop)
 
 # Encode the target variable - For classification models
@@ -60,7 +61,6 @@ print(f'Test Accuracy: {test_accuracy}')
 cm = confusion_matrix(y_test, y_pred_test)
 
 # Create a DataFrame for better visualization and mapping
-# Assuming label_mapping is a dictionary mapping encoded labels to original labels
 cm_df = pd.DataFrame(cm, index=label_mapping.keys(), columns=label_mapping.keys())
 
 # Plotting the confusion matrix
@@ -72,19 +72,20 @@ plt.xlabel('Predicted Label')
 plt.show()
 
 #Stratified KFold Crossvalidation
+#tune the hyperparameters
 rf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1) #Adjust hyperparameters
 skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42) #Adjust hyperparameters
 groups = data['Subject']
 cv_scores = cross_val_score(rf, X, y_encoded, groups=groups, cv=skf, scoring='accuracy')
 print(f'Cross-validation scores: {cv_scores}')
 print(f'Mean cross-validation accuracy: {cv_scores.mean()}')
-
+#Fit the data into the model and show the important features
 rf.fit(X, y_encoded)
 importances = rf.feature_importances_
 indices = np.argsort(importances)[::-1]
 feature_names = X.columns[indices]
 feature_importances = pd.DataFrame({'Feature': feature_names, 'Importance': importances[indices]})
-plt.figure(figsize=(12, 6))
+plt.figure(figsize=(12, 8))
 plt.title("Feature Importances")
 plt.bar(feature_importances['Feature'], feature_importances['Importance'], color='b', align='center')
 plt.xticks(rotation=45, ha='right')
@@ -95,7 +96,7 @@ plt.show()
 
 
 
-
+#conducting SHAP analysis - it usually takes more time
 rf_full = RandomForestClassifier(n_estimators=100, random_state=42)
 rf_full.fit(X, y_encoded)
 # Create a SHAP explainer object
@@ -122,74 +123,17 @@ for i in range(n_classes):
     print(f"SHAP Summary for {class_names[i]}")
     print(shap_summary)
     print("\n")
-
-shap.dependence_plot('lumbarsagittalROM', shap_values[2], X, interaction_index=None, cmap='YlOrRd')  # Assuming 'gaitspeed' is the feature name
-
+#plotting dependence plot - make sure to select the array of values you want to look (depends on the number of classes)
+shap.dependence_plot('your feature', shap_values[2], X, interaction_index=None, cmap='YlOrRd')
 # Show the plot
 plt.show()
 
-
-class_labels = label_encoder.classes_
-class_mapping = {index: label for index, label in enumerate(class_labels)}
-
-print("Class Mapping:", class_mapping)
-
-
-
-
-
-
+#in case you want to save your SHAP values
 import pickle
-# Save SHAP values
 with open('shap_values.pkl', 'wb') as file:
     pickle.dump(shap_values, file)
-# To load SHAP values later
+#in case you want to reload your SHAP values from directory
 with open('shap_values.pkl', 'rb') as file:
     shap_values = pickle.load(file)
 
-
-
-
-
-
-condition_specific_data = data[data['Condition'] == 'Baseline']
-sns.histplot(condition_specific_data['armROM'], kde=True)
-plt.title('Distribution of Lumbar Coronal Range of Motion')
-plt.xlabel('lumbarCoronalROM')
-plt.ylabel('Frequency')
-plt.show()
-# Q-Q Plot
-stats.probplot(condition_specific_data['toeoutangle'].dropna(), dist="norm", plot=plt)
-plt.title('Q-Q Plot for Lumbar Sagittal Range of Motion at Baseline')
-plt.show()
-# Shapiro-Wilk Test
-stat, p = stats.shapiro(condition_specific_data['toeoutangle'].dropna())
-print('Shapiro-Wilk Test: Statistics=%.3f, p=%.3f' % (stat, p))
-
-
-
-
-
-
-
-
-
-# Select the 'armROM' column
-armROM = data['gaitspeed']
-# Calculate IQR
-Q1 = armROM.quantile(0.25)
-Q3 = armROM.quantile(0.75)
-IQR = Q3 - Q1
-
-# Define bounds for outliers
-lower_bound = Q1 - 1.5 * IQR
-upper_bound = Q3 + 1.5 * IQR
-
-# Identify outliers
-outliers = armROM[(armROM < lower_bound) | (armROM > upper_bound)]
-
-# Count the number of outliers
-num_outliers = outliers.count()
-
-print(f"Number of outliers: {num_outliers}")
-print("Outlier values:", outliers.values)
+#Please email me your questions: sada8020@colorado.edu
